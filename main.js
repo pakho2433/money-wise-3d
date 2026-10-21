@@ -143,7 +143,7 @@ function action() {
       else { mistakes++; toast(typeof r === 'string' ? r : '這裏不適合放「' + carried.name + '」', 'bad'); sfx(180, 0.25); }
     } else {
       const it = carried; carried = null; const px = player.pos.x - Math.sin(player.yaw) * 1.5, pz = player.pos.z - Math.cos(player.yaw) * 1.5;
-      it.obj.position.set(px, Math.max(G(px, pz), -0.3) + 0.05, pz); it.obj.rotation.set(0, 0, 0); it.float = false; inter.push(it); toast('放下了「' + it.name + '」');
+      it.obj.position.set(px, Math.max(G(px, pz), -0.3) + 0.05, pz); it.obj.rotation.set(0, 0, 0); it.float = false; if (it.obj.userData.label) it.obj.userData.label.visible = true; inter.push(it); toast('放下了「' + it.name + '」');
     }
     return;
   }
@@ -392,7 +392,7 @@ function update(dt) {
   }
   camera.position.copy(player.pos); camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
   sun.position.copy(player.pos).addScaledVector(SUN_DIR, 60); sun.target.position.copy(player.pos); window._sky.position.copy(player.pos);
-  if (carried) { carryOff.set(0.45, -0.55, -1.3).applyEuler(camera.rotation); carried.obj.position.copy(camera.position).add(carryOff); carried.obj.rotation.set(0, player.yaw, 0); }
+  if (carried) { carryOff.set(0.45, -0.55, -1.3).applyEuler(camera.rotation); carried.obj.position.copy(camera.position).add(carryOff); carried.obj.rotation.set(0, player.yaw, 0); if (carried.obj.userData.label) carried.obj.userData.label.visible = false; }
   focus = paused ? null : computeFocus();
   const pr = $('prompt');
   if (focus) {
