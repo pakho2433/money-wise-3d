@@ -185,7 +185,7 @@ function showModal(html, btn, cb) {
 }
 
 // ---------- item factory ----------
-function item(build, name, labelBg) { const g = new THREE.Group(); build(g); const lb = label(name || ' ', 0, 1.25, 0, 0.55, labelBg, null, g); lb.visible = !!name; g.userData.label = lb; scene.add(g); return g; }
+function item(build, name, labelBg, ls = 0.55) { const g = new THREE.Group(); build(g); const lb = label(name || ' ', 0, 1.25, 0, ls, labelBg, null, g); lb.visible = !!name; g.userData.label = lb; scene.add(g); return g; }
 const S = {
   bottle: g => { mesh(C(0.13, 0.13, 0.55), M(0x6fc6ff, { transparent: true, opacity: 0.75, roughness: 0.1 }), 0, 0.3, 0, g); mesh(C(0.06, 0.06, 0.1), M(0x1a5fd0), 0, 0.62, 0, g); },
   chair: g => { const w = M(0xa8743f); mesh(B(0.6, 0.08, 0.6), w, 0, 0.45, 0, g); mesh(B(0.6, 0.6, 0.08), w, 0, 0.78, -0.26, g); for (const [x, z] of [[-.25, -.25], [.25, -.25], [-.25, .25], [.25, .25]]) mesh(B(0.07, 0.45, 0.07), w, x, 0.22, z, g); },
@@ -209,7 +209,7 @@ const S = {
   plug: g => { mesh(B(0.18, 0.28, 0.12), M(0x2a2a2a), 0, 0.15, 0, g); mesh(B(0.04, 0.1, 0.04), M(0xd9b23a, { metalness: 0.8 }), 0, 0.33, 0, g); },
   box: c => g => { mesh(B(0.5, 0.5, 0.5), M(c), 0, 0.25, 0, g); },
 };
-function spawn(shape, name, x, z, task, kind, extra = {}) { const o = item(shape, name, extra.labelBg); o.position.set(x, extra.y ?? G(x, z), z); return addPickup(o, name, kind, task, extra); }
+function spawn(shape, name, x, z, task, kind, extra = {}) { const o = item(shape, name, extra.labelBg, extra.ls); o.position.set(x, extra.y ?? G(x, z), z); return addPickup(o, name, kind, task, extra); }
 
 // ---------- task framework ----------
 const tasks = []; let ti = 0;
@@ -239,6 +239,7 @@ const beacon = new THREE.Mesh(C(0.5, 0.5, 40, 16, 1, true), new THREE.MeshBasicM
 function zoneSign(text, x, z, h = 5) { const y = G(x, z); mesh(C(0.1, 0.1, h, 6), M(0x7a5a3a), x - 1.6, y + h / 2, z); mesh(C(0.1, 0.1, h, 6), M(0x7a5a3a), x + 1.6, y + h / 2, z); label(text, x, y + h, z, 1.3, 'rgba(30,110,60,0.92)'); }
 function crateAt(x, z, txt) { const g = new THREE.Group(); g.position.set(x, G(x, z), z); scene.add(g); mesh(B(1.4, 0.8, 1), M(0xa8743f), 0, 0.4, 0, g); mesh(B(1.5, 0.08, 1.1), M(0x7a4a2a), 0, 0.8, 0, g); label(txt, x, g.position.y + 2.3, z, 0.75); return g; }
 const boxes = []; // AABB colliders
+const furn = (x0, x1, z0, z1) => boxes.push([x0, x1, z0, z1]);
 function wall(x0, x1, z0, z1, h, mat) { const w = x1 - x0, d = z1 - z0; mesh(B(w, h, d), mat, (x0 + x1) / 2, h / 2, (z0 + z1) / 2); boxes.push([x0, x1, z0, z1]); }
 function room(cx, cz, W, D, wallC, floorC, doors) { // doors: {s:[gapx], n:[gapx]}
   const wm = M(wallC), x0 = cx - W / 2, x1 = cx + W / 2, z0 = cz - D / 2, z1 = cz + D / 2, h = 3.4, t = 0.3;
@@ -250,7 +251,7 @@ function room(cx, cz, W, D, wallC, floorC, doors) { // doors: {s:[gapx], n:[gapx
 // scenery
 {
   const d = new THREE.Object3D(), col = new THREE.Color(); const pts = [];
-  for (let i = 0; i < 600 && pts.length < 110; i++) { const x = rand(-90, 90), z = rand(-90, 60); if (Math.abs(x) < 22 && z > -45 && z < 20) continue; pts.push([x, z]); }
+  for (let i = 0; i < 600 && pts.length < 110; i++) { const x = rand(-90, 90), z = rand(-90, 60); if (Math.abs(x) < 36 && z > -42 && z < 36) continue; pts.push([x, z]); }
   const trunk = new THREE.InstancedMesh(C(0.15, 0.25, 1.6, 6), M(0x6b4a2b), pts.length), crown = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1.5, 0), M(0xffffff), pts.length);
   pts.forEach(([x, z], i) => { const s = rand(.9, 1.6); d.position.set(x, .8 * s, z); d.scale.setScalar(s); d.rotation.set(0, rand(0, 6), 0); d.updateMatrix(); trunk.setMatrixAt(i, d.matrix); d.position.y = 2.5 * s; d.updateMatrix(); crown.setMatrixAt(i, d.matrix); col.setHSL(.28 + rand(-.04, .04), .5, rand(.28, .4)); crown.setColorAt(i, col); });
   for (const m of [trunk, crown]) { m.castShadow = true; scene.add(m); }
@@ -297,6 +298,7 @@ const moneyS = (v) => g => { if (v >= 10 && v !== 10) { mesh(B(0.62, 0.02, 0.32)
   effects.push((dt, T) => { if (water.visible) water.scale.y = 1 + Math.sin(T * 30) * 0.05; });
 }
 
+furn(-1.1, 1.1, 0.3, 1.7); furn(-8.4, -4.4, -5.7, -4.7); furn(4, 7, 4.1, 5.2);
 // ===== 2. 管理金錢：分配零用錢 =====
 {
   const cx = -4, cz = -3.2;
@@ -311,17 +313,17 @@ const moneyS = (v) => g => { if (v >= 10 && v !== 10) { mesh(B(0.62, 0.02, 0.32)
     const g = new THREE.Group(); g.position.set(x, 0.9, -3.0); scene.add(g);
     if (k === 'save') { mesh(new THREE.SphereGeometry(0.38, 16, 12), M(c), 0, 0.35, 0, g).scale.set(1.2, 1, 1); mesh(B(0.2, 0.03, 0.04), M(0x333333), 0, 0.73, 0, g); }
     else mesh(B(0.8, 0.55, 0.6), M(c), 0, 0.28, 0, g);
-    lbls[k] = label(`${names[k]} $0/$${plan[k]}`, x, 2.4, -3.0, 0.62, 'rgba(40,40,80,0.9)');
+    lbls[k] = label(`${names[k]} $0/$${plan[k]}`, x, 1.95, -3.3, 0.42, 'rgba(40,40,80,0.9)');
     addSlot(new THREE.Vector3(x, 1.0, -2.7), names[k], t.id, it => {
       if (k !== 'save' && got.save < plan.save) return '記住<b>先儲蓄，後消費</b>！<br>先把 $50 放進儲蓄錢箱。';
       if (got[k] + it.v > plan[k]) return `${names[k]} 只需要 $${plan[k]}，放這 $${it.v} 會超出計劃！<br>量入為出，按計劃分配。`;
       return true;
     }, it => { it.obj.visible = false; got[k] += it.v; setLbl(lbls[k], `${names[k]} $${got[k]}/$${plan[k]}${got[k] === plan[k] ? ' ✔' : ''}`, got[k] === plan[k] ? 'rgba(30,140,60,0.9)' : 'rgba(40,40,80,0.9)'); g.scale.setScalar(1.15); setTimeout(() => g.scale.setScalar(1), 200); progress(t); }, { multi: true }).reach = 3.2;
   });
-  label('零用錢 $100', cx, 2.2, cz + 0.2, 0.6);
-  [20, 20, 10, 20, 10, 10, 10].forEach((v, i) => spawn(moneyS(v), '$' + v, cx - 1.9 + i * 0.63, cz + 0.25, t.id, 'money', { y: 0.9, v }));
+  [20, 20, 10, 20, 10, 10, 10].forEach((v, i) => spawn(moneyS(v), '$' + v, cx - 1.9 + i * 0.63, cz + 0.25, t.id, 'money', { y: 0.9, v, ls: 0.3 }));
 }
 
+furn(-6.3, -1.7, -3.9, -2.5);
 // ===== 3. 善用金錢：文具店 =====
 {
   const [cx, cz] = Z.shop; room(cx, cz, 16, 10, 0xd8eef0, 0xe8e0d0, { s: 0 });
@@ -354,15 +356,150 @@ const moneyS = (v) => g => { if (v >= 10 && v !== 10) { mesh(B(0.62, 0.02, 0.32)
   }, it => { it.obj.visible = false; bought[it.kind] = 1; spent += it.price; setLbl(bl, `🛒 購物籃 $${spent}／預算 $12`, 'rgba(30,110,60,0.92)'); progress(t); }, { multi: true }).reach = 3.5;
 }
 
+furn(-6, 0.7, -26.1, -24.9); furn(-2.5, 6.5, -32, -30.6);
+// ===== 4. 理財目標 =====
+{
+  const cx = -24, cz = 0; room(cx, cz, 16, 10, 0xfbe8d0, 0xd8b088, { n: 0 });
+  label('🎯 理財目標角', cx, 4.6, cz - 5.4, 1.3, 'rgba(180,90,30,0.92)');
+  const lp = new THREE.PointLight(0xffe8c0, 5, 14); lp.position.set(cx, 3, cz); scene.add(lp);
+  const t = defTask({ zone: '理財目標角', title: '訂立理財目標．儲蓄', total: 5, spawn: [cx, cz - 2.5, Math.PI],
+    desc: '① 把 3 個願望放到正確的<span class=hl>理財目標架</span>：短期（7月）、中期（12月）、長期（明年6月）　② 看看<b>六月收支紀錄</b>，把<b>$120 儲蓄</b>存入<span class=hl>儲蓄戶口</span>，零錢放進<span class=hl>錢箱</span>。',
+    lesson: `<p>訂立<b>理財目標</b>，有計劃地儲蓄：</p><ul><li>短期：🧩 拼圖 $100（7月）</li><li>中期：🎁 聖誕禮物 $500（12月）</li><li>長期：🚲 單車 $1000（明年6月）</li></ul><p>志富六月：收入 $400 ＝ 玩具 $120 ＋ 文具 $120 ＋ 捐款 $40 ＋ <b>儲蓄 $120</b>。</p><p>儲蓄方法：放進<b>錢箱</b>，或存入銀行<b>儲蓄戶口</b>。</p>` });
+  const shelves = [['短期 7月', 'short', cx - 4.5], ['中期 12月', 'mid', cx, ], ['長期 明年6月', 'long', cx + 4.5]];
+  shelves.forEach(([n, k, x]) => {
+    mesh(B(3.2, 0.12, 0.9), M(0x8a5a3a), x, 1.2, cz + 4.2); mesh(B(3.2, 2.4, 0.1), M(0xa87a50), x, 1.2, cz + 4.65); furn(x - 1.6, x + 1.6, cz + 3.7, cz + 4.8);
+    label(n, x, 2.9, cz + 4.2, 0.7, 'rgba(30,110,60,0.92)');
+    addSlot(new THREE.Vector3(x, 1.27, cz + 4.1), n, t.id, it => it.kind === k ? true : `想想「${it.name}」要多久才能儲夠錢？<br>目標時間：${it.when}`, it => { it.obj.userData.label.visible = true; progress(t); toast(`✔ ${it.name} 是${n.slice(0, 2)}目標`); }).reach = 3.4;
+  });
+  mesh(B(7, 0.1, 1.2), M(0xb0804a), cx, 0.85, cz - 1); furn(cx - 3.5, cx + 3.5, cz - 1.6, cz - 0.4);
+  [['🧩拼圖 $100', 'short', '7月', g => mesh(B(0.5, 0.08, 0.4), M(0x3ab0e0), 0, 0.1, 0, g)], ['🎁聖誕禮物 $500', 'mid', '12月', g => { mesh(B(0.45, 0.4, 0.45), M(0xd03030), 0, 0.25, 0, g); mesh(B(0.47, 0.42, 0.1), M(0xf0d040), 0, 0.25, 0, g); }], ['🚲單車 $1000', 'long', '明年6月', g => { for (const x of [-0.25, 0.25]) mesh(new THREE.TorusGeometry(0.17, 0.03, 6, 16), M(0x222222), x, 0.2, 0, g); mesh(B(0.5, 0.04, 0.04), M(0x2a7ad0), 0, 0.3, 0, g); }]]
+    .forEach(([n, k, w, sh], i) => spawn(sh, n, cx - 2.5 + i * 2.5, cz - 1, t.id, k, { y: 0.9, when: w }));
+  // June record board
+  mesh(B(4.4, 2.4, 0.1), M(0xffffff), cx - 7.8 + 0.1, 1.9, cz + 0.5).rotation.y = Math.PI / 2;
+  const rb = label('六月收支：收入$400', cx - 7.6, 2.8, cz + 0.5, 0.7, 'rgba(40,40,80,0.9)');
+  label('玩具$120 文具$120 捐款$40', cx - 7.6, 2.2, cz + 0.5, 0.7, 'rgba(40,40,80,0.9)');
+  const rs = label('儲蓄 $120 → ?', cx - 7.6, 1.6, cz + 0.5, 0.7, 'rgba(160,90,20,0.92)');
+  const atm = new THREE.Group(); atm.position.set(cx + 6.8, 0, cz - 3); scene.add(atm); mesh(B(1.2, 2, 0.8), M(0x2a5aa0), 0, 1, 0, atm); mesh(B(0.8, 0.5, 0.05), M(0x88ddff, { emissive: 0x206080 }), -0.62, 1.4, 0, atm).rotation.y = Math.PI / 2; furn(cx + 6.2, cx + 7.6, cz - 3.4, cz - 2.6);
+  const al = label('🏦 儲蓄戶口 $0', cx + 6.8, 2.7, cz - 3, 0.7, 'rgba(30,80,160,0.92)');
+  const pig = mesh(new THREE.SphereGeometry(0.35, 14, 10), M(0xff8aa8), cx - 5, 1.25, cz - 1); pig.scale.x = 1.2;
+  const pl = label('🐷 錢箱', cx - 5, 2.1, cz - 1, 0.55);
+  spawn(moneyS(100), '$120 儲蓄', cx + 2.6, cz - 1.2, t.id, 'deposit', { y: 0.9 });
+  spawn(moneyS(1), '零錢', cx - 3.6, cz - 1, t.id, 'coin', { y: 0.9 });
+  addSlot(new THREE.Vector3(cx + 6, 1.0, cz - 3), '儲蓄戶口', t.id, it => it.kind === 'deposit' ? true : '零錢可以放進錢箱。', it => { it.obj.visible = false; setLbl(al, '🏦 儲蓄戶口 $120 ✔', 'rgba(30,140,60,0.9)'); setLbl(rs, '儲蓄 $120 ✔ 已存入', 'rgba(30,140,60,0.9)'); progress(t); }).reach = 3.4;
+  addSlot(new THREE.Vector3(cx - 5, 1.0, cz - 1), '錢箱', t.id, it => it.kind === 'coin' ? true : '$120 較多，存入銀行儲蓄戶口較安全。', it => { it.obj.visible = false; setLbl(pl, '🐷 錢箱 ✔', 'rgba(30,140,60,0.9)'); progress(t); }).reach = 3;
+}
+
+// ===== 5. 電子消費．防騙 =====
+{
+  const cx = -24, cz = -27; room(cx, cz, 16, 10, 0xe0e4f4, 0x9aa0b0, { s: 0 });
+  label('💻 網上購物室', cx, 4.6, cz + 5.2, 1.3, 'rgba(60,60,160,0.92)');
+  const lp = new THREE.PointLight(0xe0e8ff, 5, 14); lp.position.set(cx, 3, cz); scene.add(lp);
+  const t = defTask({ zone: '網上購物室', title: '電子消費．識破騙局', total: 7, spawn: [cx, cz + 3.5, 0],
+    desc: '① 拿<b>八達通</b>拍在<span class=hl>讀卡器</span>付款　② 用<b>卡套</b>遮蓋<span class=hl>信用卡</span>資料　③ 把<b>太便宜</b>的優惠和<b>中獎</b>彈窗拖進<span class=hl>垃圾桶</span>　④ 把可疑<b>網址、電話、轉數快 ID</b> 放進<span class=hl>防騙視伏器</span>檢查。',
+    lesson: `<p>電子消費方式：<b>八達通、流動支付、轉數快 QR、網上購物</b>，方便但要小心！</p><ul><li>價錢<b>太便宜</b>的優惠可能是陷阱 ❌</li><li><b>信用卡資料外洩</b>，會收到詐騙電話</li><li>網上<b>產品照片</b>可能和實物不同</li><li><b>保護個人資料</b>，不隨便提供</li><li>用<b>「防騙視伏器」</b>檢查可疑網址、電話號碼、轉數快 ID 🔍</li></ul>` });
+  mesh(B(6, 0.1, 1.4), M(0x7a5a3a), cx, 0.85, cz - 3.6); furn(cx - 3, cx + 3, cz - 4.4, cz - 2.9);
+  mesh(B(1.8, 1.1, 0.08), M(0x111111), cx, 1.55, cz - 4.0); mesh(B(1.7, 1.0, 0.02), M(0x3a7ad0, { emissive: 0x2050a0 }), cx, 1.55, cz - 3.95, scene, false);
+  // reader
+  const rd = mesh(B(0.4, 0.15, 0.4), M(0xf0a020, { emissive: 0x402000 }), cx - 6, 1.0, cz + 1); mesh(B(1, 0.9, 1), M(0x888888), cx - 6, 0.45, cz + 1); furn(cx - 6.5, cx - 5.5, cz + 0.5, cz + 1.5);
+  const rl = label('八達通讀卡器 $8', cx - 6, 2.0, cz + 1, 0.6);
+  spawn(g => mesh(B(0.45, 0.03, 0.3), M(0xf0b030), 0, 0.1, 0, g), '八達通', cx - 4.6, cz - 3.6, t.id, 'oct', { y: 0.9 });
+  addSlot(new THREE.Vector3(cx - 6, 1.08, cz + 1), '讀卡器', t.id, it => it.kind === 'oct' ? true : '讀卡器要用八達通', it => { it.obj.userData.label.visible = false; rd.material.emissive.set(0x00a030); setLbl(rl, '嘟！付款成功 ✔', 'rgba(30,140,60,0.9)'); progress(t); }).reach = 3;
+  // credit card
+  const card = mesh(B(0.5, 0.02, 0.32), M(0x2050c0, { metalness: .4 }), cx + 2.2, 0.92, cz - 3.4);
+  const cl = label('信用卡資料外露！', cx + 2.2, 1.9, cz - 3.4, 0.6, 'rgba(160,40,30,0.9)');
+  spawn(g => mesh(B(0.56, 0.04, 0.38), M(0x333333), 0, 0.1, 0, g), '卡套', cx - 2.5, cz - 3.6, t.id, 'cover', { y: 0.9 });
+  addSlot(new THREE.Vector3(cx + 2.2, 0.9, cz - 3.4), '信用卡', t.id, it => it.kind === 'cover' ? true : '先用卡套遮蓋信用卡', it => { it.obj.userData.label.visible = false; setLbl(cl, '資料已保護 ✔', 'rgba(30,140,60,0.9)'); progress(t); }).reach = 3;
+  // popups
+  const pop = (txt, c) => g => { mesh(B(0.8, 0.5, 0.05), M(c, { emissive: c, emissiveIntensity: .3 }), 0, 0.35, 0, g); };
+  [['iPhone 只售$99!!', 'scam'], ['你中了大獎！按此領取', 'scam']].forEach(([n, k], i) => spawn(pop(n, 0xff5050), n, cx - 1.5 + i * 3, cz - 1, t.id, k, { y: 0.0, ls: 0.5 }));
+  [['網址 hsbc-hk.top', 'sus'], ['電話 +852 5xxx 未知', 'sus'], ['轉數快ID 9876543', 'sus']].forEach(([n, k], i) => spawn(pop(n, 0xffa030), n, cx + 3.5 + i * 1.6, cz + 1.2, t.id, k, { y: 0.0, ls: 0.5 }));
+  const bin = new THREE.Group(); bin.position.set(cx + 6.5, 0, cz - 3.2); scene.add(bin); mesh(C(0.5, 0.4, 1, 12), M(0x555555), 0, 0.5, 0, bin); label('🗑️ 垃圾桶', cx + 6.5, 1.8, cz - 3.2, 0.6);
+  addSlot(new THREE.Vector3(cx + 6.5, 1.0, cz - 3.2), '垃圾桶', t.id, it => it.kind === 'scam' ? true : it.kind === 'sus' ? '不確定真假？先放進防騙視伏器檢查！' : '這個不用丟', it => { it.obj.visible = false; progress(t); toast('❌ 太便宜／中獎＝陷阱，刪除！'); }, { multi: true }).reach = 3.2;
+  const sc = new THREE.Group(); sc.position.set(cx - 5.5, 0, cz - 3); scene.add(sc); mesh(B(1.2, 1.4, 1), M(0x20a080), 0, 0.7, 0, sc); const scl = mesh(B(0.9, 0.05, 0.7), M(0x90ffe0, { emissive: 0x30a080 }), 0, 1.43, 0, sc, false); furn(cx - 6.1, cx - 4.9, cz - 3.5, cz - 2.5);
+  const sl = label('🔍 防騙視伏器', cx - 5.5, 2.4, cz - 3, 0.7, 'rgba(20,120,90,0.92)');
+  addSlot(new THREE.Vector3(cx - 5.5, 1.5, cz - 3), '防騙視伏器', t.id, it => it.kind === 'sus' ? true : it.kind === 'scam' ? '明顯的陷阱直接丟進垃圾桶！' : '這個不用檢查', it => { it.obj.visible = false; scl.material.emissive.set(0xc02020); setLbl(sl, '⚠ 高風險！不要付款', 'rgba(180,30,30,0.92)'); setTimeout(() => { scl.material.emissive.set(0x30a080); }, 900); progress(t); toast('防騙視伏器：<b>' + it.name + '</b> 屬高風險 ⚠'); }, { multi: true }).reach = 3.2;
+  effects.push((dt, T) => { for (const i of inter) if (i.task === t.id && (i.kind === 'scam' || i.kind === 'sus')) i.obj.position.y = 0.9 + Math.sin(T * 2 + i.obj.position.x) * 0.12; });
+}
+
+// ===== 6. 綠色消費 =====
+{
+  const cx = 24, cz = -27; room(cx, cz, 16, 10, 0xe4f4dc, 0xc8d8b0, { s: 0 });
+  label('🌱 綠色小店（無包裝／二手）', cx, 4.6, cz + 5.2, 1.3, 'rgba(30,120,50,0.92)');
+  const lp = new THREE.PointLight(0xf0ffe8, 5, 14); lp.position.set(cx, 3, cz); scene.add(lp);
+  const t = defTask({ zone: '綠色小店', title: '綠色消費：推購物車', total: 7, spawn: [cx + 4, cz + 3.5, 0],
+    desc: '① 把<b>空樽</b>拿到<span class=hl>補充站</span>入沐浴露　② 揀選 5 件<b>綠色</b>貨品放進<span class=hl>購物車</span>（簡單包裝、本地、可重用、二手），<b>過度包裝</b>等要放回<span class=hl>退貨架</span>　③ 把購物車<b>推</b>到收銀處。',
+    lesson: `<p><b>綠色消費</b>：</p><ul><li>避免<b>過度包裝</b> 📦</li><li>選購<b>本地</b>農產品，減少運輸 🥬</li><li>選<b>可重用</b>物品：毛巾代替紙巾</li><li>想想<b>廢物如何處理</b>：到無包裝店<b>補充沐浴露</b>、用番梘</li><li>購買<b>二手</b>物品 ♻️</li></ul>` });
+  for (const [x, z] of [[cx - 4, cz - 4.3], [cx + 3, cz - 4.3]]) { mesh(B(5, 1.8, 0.8), M(0xb08a5a), x, 0.9, z); furn(x - 2.5, x + 2.5, z - 0.4, z + 0.4); }
+  const items = [['本地菜心', 'g', 0x40a040], ['毛巾（可重用）', 'g', 0xf0f0ff], ['番梘', 'g', 0xf0e0a0], ['二手故事書', 'g', 0x8a5a3a], ['過度包裝月餅', 'b', 0xd03030], ['盒裝紙巾', 'b', 0xffffff], ['空運進口車厘子', 'b', 0x900020]];
+  const why = { '過度包裝月餅': '月餅盒過度包裝，製造大量垃圾！', '盒裝紙巾': '紙巾用完即棄，選可重用的毛巾吧！', '空運進口車厘子': '空運進口耗能，選本地農產品！' };
+  items.forEach(([n, k, c], i) => spawn(g => { mesh(k === 'b' && n.includes('月餅') ? B(0.6, 0.35, 0.6) : B(0.4, 0.25, 0.3), M(c), 0, 0.15, 0, g); if (n.includes('月餅')) mesh(B(0.65, 0.05, 0.65), M(0xf0c020), 0, 0.33, 0, g); }, n, cx - 6 + (i % 4) * 1.4 + (i > 3 ? 7.5 : 0), cz - 4.3, t.id, k, { y: 1.8, ls: 0.5, labelBg: k === 'g' ? 'rgba(40,110,50,0.85)' : 'rgba(60,60,60,0.85)' }));
+  const refill = new THREE.Group(); refill.position.set(cx + 6.8, 0, cz); scene.add(refill); mesh(B(0.8, 1.6, 0.8), M(0x3aa0c0), 0, 0.8, 0, refill); mesh(C(0.3, 0.3, 0.8, 12), M(0xa0e0ff, { transparent: true, opacity: .7 }), 0, 2.0, 0, refill); furn(cx + 6.4, cx + 7.2, cz - 0.4, cz + 0.4);
+  label('🧴 沐浴露補充站', cx + 6.8, 2.9, cz, 0.65, 'rgba(30,110,150,0.92)');
+  spawn(g => mesh(C(0.1, 0.12, 0.35, 10), M(0xffffff, { transparent: true, opacity: .6 }), 0, 0.2, 0, g), '自備空樽', cx + 5, cz + 3, t.id, 'bottle', { y: 0 });
+  const cart = new THREE.Group(); cart.position.set(cx + 1, 0.12, cz); scene.add(cart);
+  mesh(B(1.2, 0.7, 0.8), M(0x2fa84f, { metalness: .3 }), 0, 0.8, 0, cart); for (const [x, z] of [[-.5, -.35], [.5, -.35], [-.5, .35], [.5, .35]]) mesh(new THREE.SphereGeometry(0.1, 8, 6), M(0x222222), x, 0.1, z, cart); mesh(B(0.06, 0.6, 0.8), M(0x777777), 0.62, 1.2, 0, cart);
+  const cl = label('🛒 購物車 0/5', 0, 2.2, 0, 0.6, 'rgba(30,110,60,0.92)', null, cart); let n = 0; let cartPush = null;
+  const fill = mesh(B(1.0, 0.1, 0.6), M(0x8ad070), 0, 0.5, 0, cart, false); fill.visible = false;
+  const checkout = new THREE.Group(); checkout.position.set(cx - 5, 0, cz); scene.add(checkout); mesh(B(1.2, 1, 2), M(0xa86a3a), -1, 0.5, 0, checkout); label('收銀處', cx - 6, 2, cz, 0.7, 'rgba(160,90,20,0.92)');
+  const coSlot = addSlot(new THREE.Vector3(cx - 4.4, 0.12, cz), '收銀處', t.id, () => false, () => { cartPush.done = true; setLbl(cl, '✔ 綠色購物完成', 'rgba(30,140,60,0.92)'); progress(t); toast('綠色購物完成！🌏'); }, { enabled: false }); coSlot.reach = 0;
+  const addGood = () => { n++; setLbl(cl, `🛒 購物車 ${n}/5`, 'rgba(30,110,60,0.92)'); fill.visible = true; fill.position.y = 0.5 + n * 0.08; progress(t);
+    if (n >= 5) { coSlot.enabled = true; coSlot.marker.visible = true; cartPush = addPush(cart, '購物車', t.id, [coSlot]); toast('滿車了！從購物車<b>右邊</b>把它推向收銀處（左方）。'); } };
+  addSlot(new THREE.Vector3(cx + 1, 1.0, cz), '購物車', t.id, it => n >= 5 ? '購物車已滿' : it.kind === 'g' || it.kind === 'refilled' ? true : it.kind === 'bottle' ? '空樽先到補充站入沐浴露！' : '✗ ' + why[it.name] + '<br>放回退貨架吧。', it => { it.obj.visible = false; addGood(); }, { multi: true }).reach = 3.2;
+  addSlot(new THREE.Vector3(cx + 6.8, 1.6, cz), '補充站', t.id, it => it.kind === 'bottle' ? true : '補充站只可入沐浴露', it => { it.obj.position.set(cx + 6, 1.6, cz + 0.8); const r = addPickup(it.obj, '沐浴露（補充裝）', 'refilled', t.id); it.obj.userData.label.visible = true; setLbl(it.obj.userData.label, '沐浴露（補充裝）'); it.obj.children[0].material = M(0x7ad0a0, { transparent: true, opacity: .85 }); toast('入滿沐浴露，不用買新膠樽！'); }, {}).reach = 3;
+  const ret = new THREE.Group(); ret.position.set(cx - 6.8, 0, cz + 3); scene.add(ret); mesh(B(1, 1.2, 1.6), M(0x888888), 0, 0.6, 0, ret); label('↩ 退貨架', cx - 6.8, 2, cz + 3, 0.6); furn(cx - 7.3, cx - 6.3, cz + 2.2, cz + 3.8);
+  addSlot(new THREE.Vector3(cx - 6.8, 1.25, cz + 3), '退貨架', t.id, it => it.kind === 'b' ? true : '這是綠色貨品，放進購物車吧！', it => { it.obj.visible = false; progress(t); toast('放回了不環保的貨品 ↩'); }, { multi: true }).reach = 3;
+  t.total = 5 + 3 + 1; // 5 goods + 3 returns + push
+}
+
+// ===== 7. 金錢可以買到一切嗎？ =====
+{
+  const cx = 24, cz = 0; room(cx, cz, 16, 10, 0xf8e0f0, 0xe0c8d8, { n: 0 });
+  label('🎈 金錢可以買到一切嗎？', cx, 4.6, cz - 5.4, 1.3, 'rgba(160,50,120,0.92)');
+  const lp = new THREE.PointLight(0xfff0f8, 5, 14); lp.position.set(cx, 3, cz); scene.add(lp);
+  const can = ['玩具', '書本', '食物', '衣服'], cannot = ['快樂', '知識', '友誼', '時間', '健康', '自信', '親情'];
+  const t = defTask({ zone: '氣球房', title: '金錢可以買到一切嗎？', total: can.length + cannot.length, spawn: [cx, cz - 2.5, Math.PI],
+    desc: '捉住飄浮的<b>氣球</b>，放進<span class=hl>💰 金錢能買到</span>或<span class=hl>💖 金錢不能買到</span>的籠子。',
+    lesson: `<p>金錢<b>能買到</b>：玩具、書本、食物、衣服……</p><p>但金錢<b>不能買到</b>：<b>快樂、知識、友誼、時間、健康、自信、親情</b>。</p><p>金錢很重要，但不是萬能的！要珍惜身邊無價的東西 💖</p>` });
+  const cages = [['💰 金錢能買到', 'can', cx - 4, 0xf0c020], ['💖 金錢不能買到', 'cannot', cx + 4, 0xff70a0]];
+  const cnt = { can: 0, cannot: 0 }; const cls = {};
+  cages.forEach(([nm, k, x, c]) => { mesh(C(1.3, 1.3, 0.2, 20), M(c), x, 0.1, cz + 3.4); mesh(C(1.3, 1.3, 2.6, 20, 1, true), M(c, { transparent: true, opacity: 0.25, side: THREE.DoubleSide }), x, 1.4, cz + 3.4, scene, false); furn(x - 1.3, x + 1.3, cz + 2.1, cz + 4.7);
+    cls[k] = label(nm, x, 3.3, cz + 3.4, 0.8, 'rgba(60,40,80,0.9)');
+    addSlot(new THREE.Vector3(x, 1.2, cz + 2.2), nm, t.id, it => it.kind === k ? true : k === 'can' ? `「${it.name}」用錢買不到！` : `「${it.name}」可以用錢買到。`, it => { cnt[k]++; it.obj.position.set(x + Math.cos(cnt[k] * 1.7) * 0.6, 1.3 + (cnt[k] % 3) * 0.4, cz + 3.4 + Math.sin(cnt[k] * 1.7) * 0.6); it.obj.userData.label.visible = true; it.obj.userData.label.scale.set(1.6, 0.4, 1); it.placed = true; progress(t); }, { multi: true }).reach = 3.4; });
+  const balloon = c => g => { mesh(new THREE.SphereGeometry(0.28, 14, 10), M(c, { roughness: .3 }), 0, 0.9, 0, g).scale.y = 1.2; mesh(C(0.005, 0.005, 0.8, 3), M(0xffffff), 0, 0.4, 0, g, false); };
+  [...can.map(n => [n, 'can']), ...cannot.map(n => [n, 'cannot'])].sort(() => 0.5 - Math.random()).forEach(([n, k], i) => {
+    const it = spawn(balloon(new THREE.Color().setHSL(i / 11, .75, .55).getHex()), n, cx - 6 + (i % 6) * 2.4, cz - 2.6 + Math.floor(i / 6) * 2.2, t.id, k, { y: 0.3, ls: 0.45 }); it.bal = true; });
+  effects.push((dt, T) => { for (const i of inter) if (i.bal) i.obj.position.y = 0.3 + Math.sin(T * 1.5 + i.obj.position.x * 2) * 0.15; });
+}
+
+// ===== 8. 理財小達人大堂 =====
+{
+  const cx = 0, cz = 24; room(cx, cz, 20, 12, 0xfff4d8, 0xb08060, { n: 0 });
+  label('🏆 理財小達人大堂', cx, 4.6, cz - 6.4, 1.4, 'rgba(180,120,20,0.95)');
+  const lp = new THREE.PointLight(0xfff0c0, 8, 18); lp.position.set(cx, 3.2, cz); scene.add(lp);
+  mesh(B(8, 0.5, 3), M(0x8a2a2a), cx, 0.25, cz + 4); furn(cx - 4, cx + 4, cz + 2.5, cz + 5.5);
+  const steps = ['① 珍惜父母血汗錢', '② 先儲蓄後消費', '③ 精明消費比價錢', '④ 綠色消費愛地球', '⑤ 快樂親情錢買不到'];
+  const t = defTask({ zone: '大堂', title: '砌出「理財有方」獎盃塔', total: 6, spawn: [cx, cz - 3, Math.PI],
+    desc: '把 5 塊<b>理財積木</b>按次序（①到⑤，由下而上）疊在台上的<span class=hl>獎盃塔</span>，最後<b>拉下</b>彩帶繩慶祝！',
+    lesson: `<p>🎉 你已學會「理財有方」的五大重點：</p><ol><li>家中金錢由父母辛勤工作賺來，要珍惜</li><li>零用錢分儲蓄、消費、捐款；先儲蓄後消費、量入為出</li><li>勤儉節約、訂理財目標、比較價錢、小心電子消費陷阱</li><li>綠色消費</li><li>金錢不能買到一切</li></ol>` });
+  let lv = 0; const tower = new THREE.Vector3(cx, 0.5, cz + 3.6);
+  steps.forEach((n, i) => spawn(g => mesh(B(1.4 - i * 0.18, 0.4, 1.0 - i * 0.1), M(new THREE.Color().setHSL(i / 6, .7, .55).getHex()), 0, 0.2, 0, g), n, cx - 7 + [3, 0, 12, 6, 9][i], cz - 2.5 + (i % 2) * 1.5, t.id, 'blk', { lv: i, y: 0, ls: 0.4 }));
+  const sl = addSlot(tower.clone(), '獎盃塔', t.id, it => it.lv === lv ? true : `要按次序！下一塊是「${steps[lv]}」`, it => { it.obj.position.set(cx, 0.5 + lv * 0.4, cz + 3.6); it.obj.userData.label.visible = false; lv++; sl.pos.y = 0.5 + lv * 0.4; progress(t); if (lv === 5) { cup.visible = true; rope.visible = true; } }, { multi: true }); sl.reach = 4;
+  const cup = new THREE.Group(); cup.position.set(cx, 2.5, cz + 3.6); scene.add(cup); mesh(C(0.4, 0.15, 0.6, 16), M(0xf0c030, { metalness: .9, roughness: .2 }), 0, 0.3, 0, cup); mesh(C(0.1, 0.25, 0.2, 12), M(0xf0c030, { metalness: .9, roughness: .2 }), 0, 0, 0, cup); cup.visible = false;
+  const rope = new THREE.Group(); rope.position.set(cx + 5, 0, cz + 1); scene.add(rope); mesh(C(0.04, 0.04, 2.6, 6), M(0xd03030), 0, 2.1, 0, rope); mesh(new THREE.SphereGeometry(0.15, 8, 6), M(0xf0c020), 0, 0.8, 0, rope); label('拉下彩帶繩 🎊', cx + 5, 2.2, cz + 1, 0.6, 'rgba(180,40,40,0.9)');
+  const confetti = particles(400, 0xffffff, 0.25, { opacity: 1 }); confetti.visible = false; let ct = 0;
+  addSwitch(rope, '彩帶繩', t.id, it => { if (lv < 5) { mistakes++; toast('先砌好獎盃塔！', 'bad'); return; } it.done = true; rope.position.y = -0.6; confetti.visible = true; progress(t); toast('🎊 恭喜！理財小達人！'); }, '拉下');
+  effects.push((dt, T) => { if (cup.visible) cup.rotation.y += dt; if (!confetti.visible) return; ct += dt; const p = confetti.geometry.attributes.position, sd = confetti.userData.seed; for (let i = 0; i < sd.length; i++) { const f = (sd[i] + ct * 0.25) % 1; p.setXYZ(i, cx + Math.sin(i * 7.1) * 9, 3.3 - f * 3.3, cz + Math.cos(i * 3.3) * 5.5); } p.needsUpdate = true; confetti.material.color.setHSL((T * 0.3) % 1, 1, 0.6); });
+}
+
 // ---------- finale ----------
 const fireworks = particles(500, 0xffffff, 0.9, { opacity: 1 }); fireworks.visible = false;
 function finale() {
-  fireworks.visible = true; player.pos.set(0, 1.6, 10); player.yaw = 0; player.pitch = 0.35;
+  fireworks.visible = true; player.pos.set(0, 1.6, 20); player.yaw = Math.PI; player.pitch = 0.2;
   const stars = mistakes <= 3 ? '⭐⭐⭐' : mistakes <= 8 ? '⭐⭐' : '⭐';
-  showModal(`<h1>🎉 志富成為理財小達人！</h1><p style="font-size:34px;text-align:center;margin:0">${stars}</p><p style="text-align:center">總分：<b>${score}</b>　　放錯／提示：${mistakes} 次</p><h3>你學會了：</h3><ul><li>家中金錢由<b>父母工作賺取</b>，要<b>珍惜金錢、不浪費</b></li><li>零用錢分成<b>儲蓄、消費、捐款</b>；<b>先儲蓄後消費、量入為出</b></li><li><b>勤儉節約</b>；按<b>購物清單</b>和<b>預算</b>購物，<b>比較價錢</b></li></ul><p>（試玩版：更多任務即將推出！）</p>`, '欣賞煙花 🎆', () => { $('ttitle').textContent = '🎉 全部任務完成！'; $('tdesc').innerHTML = `總分 ${score}　按 F5 可重新開始`; });
+  showModal(`<h1>🎉 志富成為理財小達人！</h1><p style="font-size:34px;text-align:center;margin:0">${stars}</p><p style="text-align:center">總分：<b>${score}</b>　　放錯／提示：${mistakes} 次</p><h3>你學會了：</h3><ul><li>家中金錢由<b>父母工作賺取</b>，要<b>珍惜金錢、不浪費</b></li><li>零用錢分成<b>儲蓄、消費、捐款</b>；<b>先儲蓄後消費、量入為出</b></li><li><b>勤儉節約</b>；按<b>購物清單</b>和<b>預算</b>購物，<b>比較價錢</b></li><li><b>理財目標</b>：短期、中期、長期；錢箱／儲蓄戶口</li><li><b>電子消費</b>要小心陷阱，用防騙視伏器</li><li><b>綠色消費</b>：簡單包裝、本地、可重用、補充裝、二手</li><li>金錢<b>不能買到</b>快樂、知識、友誼、時間、健康、自信、親情</li></ul><p></p>`, '欣賞煙花 🎆', () => { $('ttitle').textContent = '🎉 全部任務完成！'; $('tdesc').innerHTML = `總分 ${score}　按 F5 可重新開始`; });
   sfx(523, .2); sfx(659, .2, .2); sfx(784, .2, .4); sfx(1046, .5, .6);
 }
-effects.push((dt, T) => { if (!fireworks.visible) return; const p = fireworks.geometry.attributes.position, sd = fireworks.userData.seed; for (let i = 0; i < sd.length; i++) { const burst = i % 8, f = (T * 0.4 + burst * 0.13) % 1, a = sd[i] * 6.283, b = (i * 0.37) % 3.14; const bx = -35 + burst * 10, by = 22 + (burst % 3) * 7, bz = -40; const r = f * 11; p.setXYZ(i, bx + Math.cos(a) * Math.sin(b) * r, by + Math.cos(b) * r - f * f * 5, bz + Math.sin(a) * Math.sin(b) * r); } p.needsUpdate = true; fireworks.material.color.setHSL((T * 0.2) % 1, 1, 0.65); });
+effects.push((dt, T) => { if (!fireworks.visible) return; const p = fireworks.geometry.attributes.position, sd = fireworks.userData.seed; for (let i = 0; i < sd.length; i++) { const burst = i % 8, f = (T * 0.4 + burst * 0.13) % 1, a = sd[i] * 6.283, b = (i * 0.37) % 3.14; const bx = -35 + burst * 10, by = 22 + (burst % 3) * 7, bz = 60; const r = f * 11; p.setXYZ(i, bx + Math.cos(a) * Math.sin(b) * r, by + Math.cos(b) * r - f * f * 5, bz + Math.sin(a) * Math.sin(b) * r); } p.needsUpdate = true; fireworks.material.color.setHSL((T * 0.2) % 1, 1, 0.65); });
 
 // ---------- main loop ----------
 const clock = new THREE.Clock(); let T = 0;
@@ -400,6 +537,7 @@ function update(dt) {
     const k = isTouch ? '按「動作」' : '按 E／左鍵';
     pr.textContent = focus.s ? `${k}：把「${carried.name}」放進「${focus.s.name}」` : `${k}：${focus.i.type === 'switch' ? focus.i.verb : focus.i.type === 'push' ? '推動' : '拿起'}「${focus.i.name}」`; pr.style.display = 'block';
   } else { ring.visible = false; if (carried && !paused) { pr.textContent = `正拿着「${carried.name}」— 走到發光圓圈並對準它`; pr.style.display = 'block'; } else pr.style.display = 'none'; }
+  for (const i of inter) { const l = i.obj.userData.label; if (l && i.name && i !== carried) l.visible = i.task === ti; }
   for (const s of slots) if (s.marker.visible) s.marker.material.opacity = 0.45 + Math.sin(T * 4) * 0.3;
   for (const e of effects) e(dt, T);
   const t = curTask();

@@ -1,0 +1,12 @@
+ipad carried via real input: 家用錢
+joystick dz -0.3814799999937417 zoom scale 1
+ipad 1 家中的金錢從哪裏來 [5, 5]
+ipad 2 分配 $100 零用錢 [7, 7]
+ipad 3 勤儉節約．精明購物 [4, 4]
+ipad 4 訂立理財目標．儲蓄 [5, 5]
+ipad 5 電子消費．識破騙局 [7, 7]
+ipad 6 綠色消費：推購物車 [9, 9]
+ipad 7 金錢可以買到一切嗎？ [11, 11]
+ipad 8 砌出「理財有方」獎盃塔 [6, 6]
+stuck 7
+ipad info {'calls': 26, 'tris': 16880, 'dpr': 1.3, 'score': 760} ERRORS []
